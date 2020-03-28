@@ -2,6 +2,7 @@
 # http://git-scm.com/docs/gitignore
 
 package-lock.json
+functions/package-lock.json
 *~
 *.sw[mnpcod]
 *.log
