@@ -1,11 +1,9 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button
-        [defaultHref]="'/places/tabs/offers'"
-      ></ion-back-button>
+      <ion-back-button [defaultHref]="'/places/tabs/offers'"></ion-back-button>
     </ion-buttons>
-    <ion-title>Edit Offer</ion-title>
+    <ion-title>Edit Health Change</ion-title>
     <ion-buttons slot="primary">
       <ion-button (click)="onUpdateOffer()" [disabled]="!form?.valid">
         <ion-icon name="checkmark" slot="icon-only"></ion-icon>

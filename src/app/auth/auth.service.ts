@@ -18,14 +18,19 @@ export interface AuthResponseData {
 })
 export class AuthService {
   private _userIsAuthenticated = false;
-  private _userId = null;
+  private _userId: string = null;
+  private _loginName: string = null;
 
   get userIsAuthenticated() {
     return this._userIsAuthenticated;
   }
 
-  get userId() {
+  get userId(): string {
     return this._userId;
+  }
+
+  get loginName(): string {
+    return this._loginName;
   }
 
   constructor(private http: HttpClient) {}
@@ -37,15 +42,7 @@ export class AuthService {
     );
   }
 
-  login__(email: string, password: string) {
-    console.log('ttt 222 login');
-    return this.http.post<AuthResponseData>(
-      `https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=${environment.firebaseAPIKey}`,
-      { email: email, password: password }
-    );
-  }
   login(email: string, password: string) {
-    console.log('ttt 222 login');
     return this.http
       .post<AuthResponseData>(
         `https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=${environment.firebaseAPIKey}`,
@@ -54,7 +51,8 @@ export class AuthService {
       .pipe(tap(this.setUserData.bind(this)));
   }
   private setUserData(userData: AuthResponseData) {
-    console.log('ttt start setUserData userData', userData);
+    this._userId = userData.localId;
+    this._loginName = userData.email;
     this._userIsAuthenticated = userData !== null;
   }
   logout() {

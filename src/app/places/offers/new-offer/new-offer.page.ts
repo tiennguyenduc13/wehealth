@@ -4,29 +4,8 @@ import { Router } from '@angular/router';
 import { LoadingController } from '@ionic/angular';
 
 import { PlacesService } from '../../places.service';
-import { PlaceLocation } from '../../location.model';
-import { switchMap } from 'rxjs/operators';
-
-function base64toBlob(base64Data, contentType) {
-  contentType = contentType || '';
-  const sliceSize = 1024;
-  const byteCharacters = window.atob(base64Data);
-  const bytesLength = byteCharacters.length;
-  const slicesCount = Math.ceil(bytesLength / sliceSize);
-  const byteArrays = new Array(slicesCount);
-
-  for (let sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
-    const begin = sliceIndex * sliceSize;
-    const end = Math.min(begin + sliceSize, bytesLength);
-
-    const bytes = new Array(end - begin);
-    for (let offset = begin, i = 0; offset < end; ++i, ++offset) {
-      bytes[i] = byteCharacters[offset].charCodeAt(0);
-    }
-    byteArrays[sliceIndex] = new Uint8Array(bytes);
-  }
-  return new Blob(byteArrays, { type: contentType });
-}
+import { IHealthChange } from '../../place.model';
+import { AuthService } from 'src/app/auth/auth.service';
 
 @Component({
   selector: 'app-new-offer',
@@ -38,80 +17,60 @@ export class NewOfferPage implements OnInit {
 
   constructor(
     private placesService: PlacesService,
+    private authService: AuthService,
     private router: Router,
     private loadingCtrl: LoadingController
   ) {}
 
   ngOnInit() {
     this.form = new FormGroup({
-      title: new FormControl(null, {
-        updateOn: 'blur',
-        validators: [Validators.required]
+      rdoPositive: new FormControl(null, {
+        updateOn: 'blur'
       }),
-      description: new FormControl(null, {
-        updateOn: 'blur',
-        validators: [Validators.required, Validators.maxLength(180)]
+      rdoSymptoms: new FormControl(null, {
+        updateOn: 'blur'
       }),
-      price: new FormControl(null, {
-        updateOn: 'blur',
-        validators: [Validators.required, Validators.min(1)]
+      rdoExposed: new FormControl(null, {
+        updateOn: 'blur'
       }),
-      dateFrom: new FormControl(null, {
-        updateOn: 'blur',
-        validators: [Validators.required]
-      }),
-      dateTo: new FormControl(null, {
-        updateOn: 'blur',
-        validators: [Validators.required]
-      }),
-      location: new FormControl(null, { validators: [Validators.required] }),
-      image: new FormControl(null)
+      rdoNormal: new FormControl(null, {
+        updateOn: 'blur'
+      })
     });
   }
 
-  onLocationPicked(location: PlaceLocation) {
-    this.form.patchValue({ location: location });
-  }
-
-  onImagePicked(imageData: string | File) {
-    let imageFile;
-    if (typeof imageData === 'string') {
-      try {
-        imageFile = base64toBlob(
-          imageData.replace('data:image/jpeg;base64,', ''),
-          'image/jpeg'
-        );
-      } catch (error) {
-        console.log(error);
-        return;
-      }
-    } else {
-      imageFile = imageData;
-    }
-    this.form.patchValue({ image: imageFile });
-  }
-
-  onCreateOffer() {
-    // if (!this.form.valid || !this.form.get('image').value) {
-    if (!this.form.valid) {
-      return;
-    }
+  onCreateHealthChange() {
+    // if (!this.form.valid) {
+    //   return;
+    // }
     this.loadingCtrl
       .create({
-        message: 'Creating place...'
+        message: 'Creating health change...'
       })
       .then(loadingEl => {
         loadingEl.present();
+        const healthSignals: string[] = [];
+
+        if (this.form.value.rdoPositive) {
+          healthSignals.push('positive');
+        }
+        if (this.form.value.rdoSymptoms) {
+          healthSignals.push('symptoms');
+        }
+        if (this.form.value.rdoExposed) {
+          healthSignals.push('exposed');
+        }
+        if (this.form.value.rdoNormal) {
+          healthSignals.push('normal');
+        }
+        const newHealthChange: IHealthChange = {
+          userId: this.authService.userId,
+          healthSignals: healthSignals,
+          eventDate: new Date()
+        };
+        debugger;
         return this.placesService
-          .addPlace(
-            this.form.value.title,
-            this.form.value.description,
-            +this.form.value.price,
-            new Date(this.form.value.dateFrom),
-            new Date(this.form.value.dateTo),
-            this.form.value.location,
-            'uploadRes.imageUrl'
-          )
+          .addHealthChange(newHealthChange)
           .subscribe(() => {
             loadingEl.dismiss();
             this.form.reset();

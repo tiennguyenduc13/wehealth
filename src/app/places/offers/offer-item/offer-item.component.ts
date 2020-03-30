@@ -1,6 +1,6 @@
 import { Component, OnInit, Input } from '@angular/core';
 
-import { Place } from '../../place.model';
+import { IHealthChange } from '../../place.model';
 
 @Component({
   selector: 'app-offer-item',
@@ -8,10 +8,9 @@ import { Place } from '../../place.model';
   styleUrls: ['./offer-item.component.scss']
 })
 export class OfferItemComponent implements OnInit {
-  @Input() offer: Place;
+  @Input() healthChange: IHealthChange;
 
-  constructor() { }
+  constructor() {}
 
-  ngOnInit() {
-  }
+  ngOnInit() {}
 }

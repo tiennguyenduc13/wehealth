@@ -4,7 +4,8 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { PlacesService } from '../places.service';
-import { Place } from '../place.model';
+import { Place, IHealthChange } from '../place.model';
+import { AuthService } from 'src/app/auth/auth.service';
 
 @Component({
   selector: 'app-offers',
@@ -12,23 +13,38 @@ import { Place } from '../place.model';
   styleUrls: ['./offers.page.scss']
 })
 export class OffersPage implements OnInit, OnDestroy {
-  offers: Place[];
+  healthChanges: IHealthChange[];
   isLoading = false;
-  private placesSub: Subscription;
+  private healthChangeSub: Subscription;
 
-  constructor(private placesService: PlacesService, private router: Router) {}
+  constructor(
+    private placesService: PlacesService,
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   ngOnInit() {
-    this.placesSub = this.placesService.places.subscribe(places => {
-      this.offers = places;
-    });
+    console.log('ttt11');
+    this.healthChangeSub = this.placesService.healthChanges.subscribe(
+      healthChanges => {
+        this.healthChanges = healthChanges;
+      }
+    );
   }
 
   ionViewWillEnter() {
+    console.log('ttt112');
     this.isLoading = true;
-    this.placesService.fetchPlaces().subscribe(() => {
-      this.isLoading = false;
-    });
+    this.placesService
+      .loadHealthChanges(this.authService.userId)
+      .then(result => {
+        debugger;
+        // this.healthChanges = result;
+      });
+    //   .fetchHealthChanges(this.authService.userId)
+    //   .subscribe(() => {
+    //     this.isLoading = false;
+    //   });
   }
 
   onEdit(offerId: string, slidingItem: IonItemSliding) {
@@ -38,8 +54,8 @@ export class OffersPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    if (this.placesSub) {
-      this.placesSub.unsubscribe();
+    if (this.healthChangeSub) {
+      this.healthChangeSub.unsubscribe();
     }
   }
 }

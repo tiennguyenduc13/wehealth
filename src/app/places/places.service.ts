@@ -1,45 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, of } from 'rxjs';
-import { take, map, tap, delay, switchMap } from 'rxjs/operators';
+import { BehaviorSubject } from 'rxjs';
+import { take, map, tap, switchMap } from 'rxjs/operators';
 
-import { Place } from './place.model';
-import { AuthService } from '../auth/auth.service';
+import { IHealthChange, HealthChange } from './place.model';
 import { PlaceLocation } from './location.model';
+import * as firebaseAdmin from 'firebase-admin';
+const serviceAccount = require('../../environments/config/wehealth-service-account.json');
 
-// [
-//   new Place(
-//     'p1',
-//     'Manhattan Mansion',
-//     'In the heart of New York City.',
-//     'https://lonelyplanetimages.imgix.net/mastheads/GettyImages-538096543_medium.jpg?sharp=10&vib=20&w=1200',
-//     149.99,
-//     new Date('2019-01-01'),
-//     new Date('2019-12-31'),
-//     'abc'
-//   ),
-//   new Place(
-//     'p2',
-//     "L'Amour Toujours",
-//     'A romantic place in Paris!',
-//     'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Paris_Night.jpg/1024px-Paris_Night.jpg',
-//     189.99,
-//     new Date('2019-01-01'),
-//     new Date('2019-12-31'),
-//     'abc'
-//   ),
-//   new Place(
-//     'p3',
-//     'The Foggy Palace',
-//     'Not your average city trip!',
-//     'https://upload.wikimedia.org/wikipedia/commons/0/01/San_Francisco_with_two_bridges_and_the_fog.jpg',
-//     99.99,
-//     new Date('2019-01-01'),
-//     new Date('2019-12-31'),
-//     'abc'
-//   )
-// ]
-
+import * as _ from 'lodash';
 interface PlaceData {
   availableFrom: string;
   availableTo: string;
@@ -55,163 +24,157 @@ interface PlaceData {
   providedIn: 'root'
 })
 export class PlacesService {
-  private _places = new BehaviorSubject<Place[]>([]);
+  private _healthChanges = new BehaviorSubject<IHealthChange[]>([]);
 
-  get places() {
-    return this._places.asObservable();
+  get healthChanges() {
+    return this._healthChanges.asObservable();
   }
 
-  constructor(private authService: AuthService, private http: HttpClient) {}
+  constructor(private http: HttpClient) {}
+  loadHealthChanges(userId: string = '') {
+    firebaseAdmin.initializeApp({
+      credential: firebaseAdmin.credential.cert(serviceAccount)
+    });
 
-  fetchPlaces() {
+    const db = firebaseAdmin.firestore();
+    const collectionRef = db.collection('health-change');
+    const queryResult = collectionRef
+      .where('userId', '==', userId)
+      .get()
+      .then(healthChanges => {
+        if (healthChanges.empty) {
+          console.log('No matching documents.');
+          return;
+        }
+
+        healthChanges.forEach(doc => {
+          console.log(doc.id, '=>', doc.data());
+        });
+      })
+      .catch(err => {
+        console.log('Error getting documents', err);
+      });
+
+    return queryResult;
+  }
+  fetchHealthChanges(userId: string = '') {
     return this.http
-      .get<{ [key: string]: PlaceData }>(
-        'https://wehealth-6d7d4.firebaseio.com/offered-places.json'
+      .get<{ [key: string]: IHealthChange }>(
+        'https://wehealth-6d7d4.firebaseio.com/health-change.json'
       )
       .pipe(
         map(resData => {
-          const places = [];
+          const healthChanges = [];
           for (const key in resData) {
             if (resData.hasOwnProperty(key)) {
-              places.push(
-                new Place(
-                  key,
-                  resData[key].title,
-                  resData[key].description,
-                  resData[key].imageUrl,
-                  resData[key].price,
-                  new Date(resData[key].availableFrom),
-                  new Date(resData[key].availableTo),
-                  resData[key].userId,
-                  resData[key].location
-                )
-              );
+              const resDataUserId = resData[key].userId;
+              if (
+                _.isEmpty(userId) ||
+                (!_.isEmpty(userId) && resDataUserId === userId)
+              ) {
+                const newHealthChange: HealthChange = {
+                  id: key,
+                  userId: resData[key].userId,
+                  healthSignals: resData[key].healthSignals,
+                  eventDate: resData[key].eventDate
+                };
+                healthChanges.push(newHealthChange);
+              }
             }
           }
-          return places;
-          // return [];
+          return _.orderBy(healthChanges, ['eventDate'], ['desc']);
         }),
-        tap(places => {
-          this._places.next(places);
+        tap(healthChanges => {
+          this._healthChanges.next(healthChanges);
         })
       );
   }
 
-  getPlace(id: string) {
+  getHealthChange(id: string) {
     return this.http
-      .get<PlaceData>(
-        `https://wehealth-6d7d4.firebaseio.com/offered-places/${id}.json`
+      .get<IHealthChange>(
+        `https://wehealth-6d7d4.firebaseio.com/health-change/${id}.json`
       )
       .pipe(
-        map(placeData => {
-          return new Place(
-            id,
-            placeData.title,
-            placeData.description,
-            placeData.imageUrl,
-            placeData.price,
-            new Date(placeData.availableFrom),
-            new Date(placeData.availableTo),
-            placeData.userId,
-            placeData.location
-          );
+        map((healthChange: HealthChange) => {
+          return {
+            id: healthChange.id,
+            userId: healthChange.userId,
+            eventDate: healthChange.eventDate,
+            healthSignals: healthChange.healthSignals
+          };
         })
       );
   }
 
-  uploadImage(image: File) {
-    const uploadData = new FormData();
-    uploadData.append('image', image);
-
-    return this.http.post<{ imageUrl: string; imagePath: string }>(
-      'https://us-central1-ionic-angular-course.cloudfunctions.net/storeImage',
-      uploadData
-    );
-  }
-
-  addPlace(
-    title: string,
-    description: string,
-    price: number,
-    dateFrom: Date,
-    dateTo: Date,
-    location: PlaceLocation,
-    imageUrl: string
-  ) {
+  addHealthChange(healthChange: IHealthChange) {
     let generatedId: string;
-    const newPlace = new Place(
+
+    const newHealthChange = new HealthChange(
       Math.random().toString(),
-      title,
-      description,
-      imageUrl,
-      price,
-      dateFrom,
-      dateTo,
-      this.authService.userId,
-      location
+      healthChange.userId,
+      healthChange.eventDate,
+      healthChange.healthSignals
     );
+    console.log('ttt newHealthChange ', newHealthChange);
     return this.http
       .post<{ name: string }>(
-        'https://wehealth-6d7d4.firebaseio.com/offered-places.json',
+        'https://wehealth-6d7d4.firebaseio.com/health-change.json',
         {
-          ...newPlace,
+          ...newHealthChange,
           id: null
         }
       )
       .pipe(
         switchMap(resData => {
           generatedId = resData.name;
-          return this.places;
+          return this.healthChanges;
         }),
         take(1),
-        tap(places => {
-          newPlace.id = generatedId;
-          this._places.next(places.concat(newPlace));
+        tap(healthChanges => {
+          newHealthChange.id = generatedId;
+          this._healthChanges.next(healthChanges.concat(newHealthChange));
         })
       );
+  }
+  getPlace(id: any) {
+    return null;
+  }
+  updatePlace(placeId: string, title: string, description: string) {
+    // let updatedPlaces: Place[];
     // return this.places.pipe(
     //   take(1),
-    //   delay(1000),
-    //   tap(places => {
-    //     this._places.next(places.concat(newPlace));
+    //   switchMap(places => {
+    //     if (!places || places.length <= 0) {
+    //       return this.fetchPlaces();
+    //     } else {
+    //       return of(places);
+    //     }
+    //   }),
+    //   switchMap(places => {
+    //     const updatedPlaceIndex = places.findIndex(pl => pl.id === placeId);
+    //     updatedPlaces = [...places];
+    //     const oldPlace = updatedPlaces[updatedPlaceIndex];
+    //     updatedPlaces[updatedPlaceIndex] = new Place(
+    //       oldPlace.id,
+    //       title,
+    //       description,
+    //       oldPlace.imageUrl,
+    //       oldPlace.price,
+    //       oldPlace.availableFrom,
+    //       oldPlace.availableTo,
+    //       oldPlace.userId,
+    //       oldPlace.location
+    //     );
+    //     return this.http.put(
+    //       `https://wehealth-6d7d4.firebaseio.com/offered-places/${placeId}.json`,
+    //       { ...updatedPlaces[updatedPlaceIndex], id: null }
+    //     );
+    //   }),
+    //   tap(() => {
+    //     this._places.next(updatedPlaces);
     //   })
     // );
-  }
-
-  updatePlace(placeId: string, title: string, description: string) {
-    let updatedPlaces: Place[];
-    return this.places.pipe(
-      take(1),
-      switchMap(places => {
-        if (!places || places.length <= 0) {
-          return this.fetchPlaces();
-        } else {
-          return of(places);
-        }
-      }),
-      switchMap(places => {
-        const updatedPlaceIndex = places.findIndex(pl => pl.id === placeId);
-        updatedPlaces = [...places];
-        const oldPlace = updatedPlaces[updatedPlaceIndex];
-        updatedPlaces[updatedPlaceIndex] = new Place(
-          oldPlace.id,
-          title,
-          description,
-          oldPlace.imageUrl,
-          oldPlace.price,
-          oldPlace.availableFrom,
-          oldPlace.availableTo,
-          oldPlace.userId,
-          oldPlace.location
-        );
-        return this.http.put(
-          `https://wehealth-6d7d4.firebaseio.com/offered-places/${placeId}.json`,
-          { ...updatedPlaces[updatedPlaceIndex], id: null }
-        );
-      }),
-      tap(() => {
-        this._places.next(updatedPlaces);
-      })
-    );
+    return null;
   }
 }
