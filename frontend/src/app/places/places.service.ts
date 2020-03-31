@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { take, map, tap, switchMap } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
 import { IHealthChange, HealthChange } from './place.model';
+import { IPositionMap, PositionMap } from './position-map.model';
 import * as _ from 'lodash';
 import { environment } from '../../environments/environment';
 
@@ -10,7 +11,8 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class PlacesService {
-  private url = environment.backendUrl + '/health-change';
+  private healthChangeUrl = environment.backendUrl + '/health-change';
+  private positionMapUrl = environment.backendUrl + '/position-map';
   private _healthChanges = new BehaviorSubject<IHealthChange[]>([]);
 
   get healthChanges() {
@@ -18,17 +20,48 @@ export class PlacesService {
   }
 
   constructor(private http: HttpClient) {}
-  loadHealthChanges(userId: string = ''): Observable<IHealthChange[]> {
-    return this.http.get<IHealthChange[]>(this.url).pipe(
-      map(resData => {
-        const healthChanges = [];
-        for (const key in resData) {
-          if (resData.hasOwnProperty(key)) {
-            const resDataUserId = resData[key].userId;
-            if (
-              _.isEmpty(userId) ||
-              (!_.isEmpty(userId) && resDataUserId === userId)
-            ) {
+  updatePosition(userId, position) {
+    console.log('ttt000 calling backend updatePosition', userId, position);
+    if (!_.isEmpty(userId) && !_.isEmpty(position)) {
+      return this.http
+        .post<IPositionMap>(
+          `${this.positionMapUrl}/updatePosition/${userId}`,
+          position
+        )
+        .pipe(
+          map((resData: IPositionMap) => {
+            console.log('ttt updatePosition resData', resData);
+          })
+        );
+    }
+  }
+
+  updateHealthSignals(userId, healthSignals: string[]) {
+    console.log('ttt000 calling backend updateHealthSignals', userId, {
+      healthSignals
+    });
+    if (!_.isEmpty(userId) && !_.isEmpty(healthSignals)) {
+      return this.http
+        .post<IPositionMap>(
+          `${this.positionMapUrl}/updateHealthSignals/${userId}`,
+          healthSignals
+        )
+        .pipe(
+          map((resData: IPositionMap) => {
+            console.log('ttt updateHealthSignals resData', resData);
+          })
+        );
+    }
+  }
+
+  loadHealthChanges(userId: string): Observable<IHealthChange[]> {
+    return this.http
+      .get<IHealthChange[]>(`${this.healthChangeUrl}/listByUserId/${userId}`)
+      .pipe(
+        map(resData => {
+          const healthChanges = [];
+          for (const key in resData) {
+            if (resData.hasOwnProperty(key)) {
               const newHealthChange: HealthChange = {
                 id: key,
                 userId: resData[key].userId,
@@ -38,17 +71,42 @@ export class PlacesService {
               healthChanges.push(newHealthChange);
             }
           }
+          return _.orderBy(healthChanges, ['eventDate'], ['desc']);
+        })
+      );
+  }
+
+  loadPositionMaps(): Observable<IPositionMap[]> {
+    return this.http.get<IPositionMap[]>(`${this.positionMapUrl}/list`).pipe(
+      map(resData => {
+        const positionMaps = [];
+        for (const key in resData) {
+          if (resData.hasOwnProperty(key)) {
+            const newPositionMap: PositionMap = {
+              id: key,
+              position: resData[key].position,
+              userId: resData[key].userId,
+              healthSignals: resData[key].healthSignals,
+              eventDate: resData[key].eventDate
+            };
+            positionMaps.push(newPositionMap);
+          }
         }
-        return _.orderBy(healthChanges, ['eventDate'], ['desc']);
-      }),
-      tap(healthChanges => {
-        this._healthChanges.next(healthChanges);
+        return positionMaps;
       })
     );
   }
 
+  getLatestHealthChange(userId: string): Observable<IHealthChange> {
+    return this.http
+      .get<IHealthChange>(`${this.healthChangeUrl}/latest/${userId}`)
+      .pipe(resData => {
+        return resData;
+      });
+  }
+
   getHealthChange(id: string) {
-    return this.http.get<IHealthChange>(`${this.url}/${id}`).pipe(
+    return this.http.get<IHealthChange>(`${this.healthChangeUrl}/${id}`).pipe(
       map((healthChange: HealthChange) => {
         return {
           id: healthChange.id,
@@ -61,31 +119,13 @@ export class PlacesService {
   }
 
   addHealthChange(healthChange: IHealthChange) {
-    let generatedId: string;
-
-    const newHealthChange = new HealthChange(
-      Math.random().toString(),
-      healthChange.userId,
-      healthChange.eventDate,
-      healthChange.healthSignals
-    );
-    return this.http
-      .post<{ name: string }>(this.url + '/add', {
-        ...newHealthChange,
-        id: null
-      })
-      .pipe(
-        switchMap(resData => {
-          generatedId = resData.name;
-          return this.healthChanges;
-        }),
-        take(1),
-        tap(healthChanges => {
-          newHealthChange.id = generatedId;
-          this._healthChanges.next(healthChanges.concat(newHealthChange));
-        })
-      );
+    console.log(healthChange);
+    return this.http.post<IHealthChange>(this.healthChangeUrl + '/add', {
+      ...healthChange,
+      id: null
+    });
   }
+
   getPlace(id: any) {
     return null;
   }
@@ -116,7 +156,7 @@ export class PlacesService {
     //       oldPlace.location
     //     );
     //     return this.http.put(
-    //       `https://wehealth-6d7d4.firebaseio.com/offered-places/${placeId}.json`,
+    //       `https: ; // wehealth-6d7d4.firebaseio.com/offered-places/${placeId}.json`,
     //       { ...updatedPlaces[updatedPlaceIndex], id: null }
     //     );
     //   }),

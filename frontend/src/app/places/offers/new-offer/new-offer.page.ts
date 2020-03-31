@@ -16,12 +16,11 @@ export class NewOfferPage implements OnInit {
   form: FormGroup;
 
   constructor(
-    private placesService: PlacesService,
+    private placeService: PlacesService,
     private authService: AuthService,
     private router: Router,
     private loadingCtrl: LoadingController
   ) {}
-
   ngOnInit() {
     this.form = new FormGroup({
       rdoPositive: new FormControl(null, {
@@ -37,6 +36,11 @@ export class NewOfferPage implements OnInit {
         updateOn: 'blur'
       })
     });
+  }
+  saveMyHealthSignals(healthSignals: string[]) {
+    this.placeService
+      .updateHealthSignals(this.authService.userId, healthSignals)
+      .subscribe(positionMap => {});
   }
 
   onCreateHealthChange() {
@@ -63,15 +67,16 @@ export class NewOfferPage implements OnInit {
         if (this.form.value.rdoNormal) {
           healthSignals.push('normal');
         }
-        const newHealthChange: IHealthChange = {
+        const healthChange: IHealthChange = {
           userId: this.authService.userId,
           healthSignals: healthSignals,
           eventDate: new Date()
         };
-        debugger;
-        return this.placesService
-          .addHealthChange(newHealthChange)
-          .subscribe(() => {
+        this.placeService
+          .addHealthChange(healthChange)
+          .subscribe((newHealthChange: IHealthChange) => {
+            console.log('Done added here', newHealthChange);
+            this.saveMyHealthSignals(newHealthChange.healthSignals);
             loadingEl.dismiss();
             this.form.reset();
             this.router.navigate(['/places/tabs/offers']);

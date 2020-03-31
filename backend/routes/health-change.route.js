@@ -10,18 +10,16 @@ healthChangeRoutes.route("/add").post(function(req, res) {
   healthChange
     .save()
     .then(healthChange => {
-      res
-        .status(200)
-        .json({ healthChange: "healthChange in added successfully" });
+      res.status(200).json(healthChange);
     })
     .catch(err => {
       res.status(400).send("unable to save to database");
     });
 });
 
-// Defined get data(index or listing) route
-healthChangeRoutes.route("/").get(function(req, res) {
-  HealthChange.find(function(err, healthChanges) {
+healthChangeRoutes.route("/listByUserId/:userId").get(function(req, res) {
+  const userId = req.params.userId;
+  HealthChange.find({ userId: userId }, (err, healthChanges) => {
     if (err) {
       console.log(err);
     } else {
@@ -30,9 +28,24 @@ healthChangeRoutes.route("/").get(function(req, res) {
   });
 });
 
+healthChangeRoutes.route("/latest/:userId").get(function(req, res) {
+  const userId = req.params.userId;
+  HealthChange.find({ userId: userId })
+    .sort({ eventDate: -1 })
+    .limit(1)
+    .then(healthChanges => {
+      if (healthChanges && healthChanges.length) {
+        res.json(healthChanges[0]);
+      } else {
+        res.json({});
+      }
+    });
+});
+
 //  Defined update route
 healthChangeRoutes.route("/update/:id").post(function(req, res) {
-  HealthChange.findById(req.params.id, function(err, next, healthChange) {
+  const id = req.params.id;
+  HealthChange.findById(id, function(err, next, healthChange) {
     if (!healthChange) return next(new Error("Could not load Document"));
     else {
       healthChange.userId = req.body.userId;

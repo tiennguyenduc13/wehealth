@@ -11,6 +11,9 @@ import {
 import { environment } from '../../../environments/environment';
 import { Plugins, Capacitor, GeolocationPosition } from '@capacitor/core';
 import { AuthService } from 'src/app/auth/auth.service';
+import { PlacesService } from '../places.service';
+import { IPositionMap, PositionMap } from '../position-map.model';
+import { IHealthChange } from '../place.model';
 
 @Component({
   selector: 'app-discover',
@@ -27,41 +30,78 @@ export class DiscoverPage implements OnInit, AfterViewInit, OnDestroy {
   isLoading = false;
   loginName: string;
 
-  constructor(private renderer: Renderer2, private authService: AuthService) {}
+  constructor(
+    private renderer: Renderer2,
+    private authService: AuthService,
+    private placeService: PlacesService
+  ) {}
 
   ngOnInit() {}
 
-  ngAfterViewInit() {
-    this.loginName = this.authService.loginName;
-    this.locateUser()
+  saveMyPosition() {
+    this.placeService
+      .updatePosition(this.authService.userId, this.center)
+      .subscribe(positionMap => {});
+  }
+
+  updatePosition() {
+    return this.locateUser()
       .then(geoPosition => {
         this.center = {
           lat: geoPosition.coords.latitude,
           lng: geoPosition.coords.longitude
         };
         this.isLoading = false;
-
-        this.showMap();
+        this.saveMyPosition();
       })
       .catch(err => {
         this.isLoading = false;
       });
   }
-  createMarker() {
+  ngAfterViewInit() {
+    this.loginName = this.authService.loginName;
+    this.updatePosition().then(() => {
+      this.showMap();
+    });
+  }
+  createMarker(title: string, icon: object) {
     return new this.googleMaps.Marker({
       position: this.center,
       map: this.mainMap,
-      title: 'Me',
-      icon: {
-        url: 'assets/icon/itsme.png'
-      }
+      title: title,
+      icon: icon
     });
   }
+  loadPositionMaps() {
+    return this.placeService.loadPositionMaps();
+  }
+  findIconImage(healthSignals: string[]) {
+    // const allHealthSignals = ['positive', 'symptoms', 'exposed', 'normal'];
+    let iconImage = '4';
+    iconImage = healthSignals.includes('positive') ? '1' : iconImage;
+    iconImage = healthSignals.includes('symptoms') ? '2' : iconImage;
+    iconImage = healthSignals.includes('exposed') ? '3' : iconImage;
+
+    return 'assets/icon/health/' + iconImage + '.png';
+  }
   addMarkers() {
-    // set marker
-    const marker = this.createMarker();
-    marker.setMap(this.mainMap);
-    console.log('ttt111');
+    // get positionMaps
+    this.isLoading = true;
+    this.loadPositionMaps().subscribe((positionMaps: IPositionMap[]) => {
+      // set marker for me
+      let marker = this.createMarker('Me', { url: 'assets/icon/itsme.png' });
+      marker.setMap(this.mainMap);
+      positionMaps.forEach((positionMap: IPositionMap) => {
+        // set marker for others
+        marker = this.createMarker(positionMap.userId, {
+          url: this.findIconImage(positionMap.healthSignals),
+          scaledSize: new this.googleMaps.Size(25, 25)
+        });
+        console.log('marker', marker);
+        marker.setMap(this.mainMap);
+      });
+      this.isLoading = false;
+    });
   }
 
   showMap() {
@@ -86,12 +126,12 @@ export class DiscoverPage implements OnInit, AfterViewInit, OnDestroy {
   }
   locateUser(): Promise<GeolocationPosition> {
     if (!Capacitor.isPluginAvailable('Geolocation')) {
+      console.log('Capacitor Geolocation not Available!!!');
       return;
     }
     this.isLoading = true;
     return Plugins.Geolocation.getCurrentPosition();
   }
-
   onCancel() {}
 
   ngOnDestroy() {}
