@@ -1,7 +1,4 @@
-// business.route.js
-
 const express = require("express");
-const app = express();
 const businessRoutes = express.Router();
 
 // Require Business model in our routes module
@@ -10,11 +7,9 @@ let Business = require("../models/Business");
 // Defined store route
 businessRoutes.route("/add").post(function(req, res) {
   let business = new Business(req.body);
-  console.log("ttt saving ", business);
   business
     .save()
     .then(business => {
-      console.log("tttr result ", business);
       res.status(200).json({ business: "business in added successfully" });
     })
     .catch(err => {

@@ -1,5 +1,4 @@
 const express = require("express");
-const app = express();
 const healthChangeRoutes = express.Router();
 
 // Require HealthChange model in our routes module
@@ -8,11 +7,9 @@ let HealthChange = require("../models/HealthChange");
 // Defined store route
 healthChangeRoutes.route("/add").post(function(req, res) {
   let healthChange = new HealthChange(req.body);
-  console.log("ttt saving ", healthChange);
   healthChange
     .save()
     .then(healthChange => {
-      console.log("tttr result ", healthChange);
       res
         .status(200)
         .json({ healthChange: "healthChange in added successfully" });
@@ -24,20 +21,12 @@ healthChangeRoutes.route("/add").post(function(req, res) {
 
 // Defined get data(index or listing) route
 healthChangeRoutes.route("/").get(function(req, res) {
-  HealthChange.find(function(err, healthChangees) {
+  HealthChange.find(function(err, healthChanges) {
     if (err) {
       console.log(err);
     } else {
-      res.json(healthChangees);
+      res.json(healthChanges);
     }
-  });
-});
-
-// Defined edit route
-healthChangeRoutes.route("/edit/:id").get(function(req, res) {
-  let id = req.params.id;
-  HealthChange.findById(id, function(err, healthChange) {
-    res.json(healthChange);
   });
 });
 
@@ -46,9 +35,7 @@ healthChangeRoutes.route("/update/:id").post(function(req, res) {
   HealthChange.findById(req.params.id, function(err, next, healthChange) {
     if (!healthChange) return next(new Error("Could not load Document"));
     else {
-      healthChange.person_name = req.body.person_name;
-      healthChange.healthChange_name = req.body.healthChange_name;
-      healthChange.healthChange_gst_number = req.body.healthChange_gst_number;
+      healthChange.userId = req.body.userId;
 
       healthChange
         .save()
