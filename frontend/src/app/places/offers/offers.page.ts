@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { IonItemSliding } from '@ionic/angular';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { PlacesService } from '../places.service';
+import { Place } from '../place.model';
 import { IHealthChange } from '../place.model';
 import { AuthService } from 'src/app/auth/auth.service';
 
@@ -11,9 +13,11 @@ import { AuthService } from 'src/app/auth/auth.service';
   templateUrl: './offers.page.html',
   styleUrls: ['./offers.page.scss']
 })
-export class OffersPage implements OnInit {
-  healthChanges: IHealthChange[];
+export class OffersPage implements OnInit, OnDestroy {
+  offers: Place[];
   isLoading = false;
+  private placesSub: Subscription;
+  healthChanges: IHealthChange[];
 
   constructor(
     private placesService: PlacesService,
@@ -21,15 +25,21 @@ export class OffersPage implements OnInit {
     private authService: AuthService
   ) {}
 
-  ngOnInit() {}
+  ngOnInit() {
+    this.placesSub = this.placesService.places.subscribe(places => {
+      this.offers = places;
+    });
+  }
 
   ionViewWillEnter() {
+    console.log('ttt ionViewWillEnter');
     this.isLoading = true;
     this.placesService
       .loadHealthChanges(this.authService.userId)
       .subscribe(healthChanges => {
         this.isLoading = false;
         this.healthChanges = healthChanges;
+        console.log('ttt ionViewWillEnter', this.healthChanges);
       });
   }
 
@@ -37,5 +47,11 @@ export class OffersPage implements OnInit {
     slidingItem.close();
     this.router.navigate(['/', 'places', 'tabs', 'offers', 'edit', offerId]);
     console.log('Editing item', offerId);
+  }
+
+  ngOnDestroy() {
+    if (this.placesSub) {
+      this.placesSub.unsubscribe();
+    }
   }
 }

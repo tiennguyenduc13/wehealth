@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  backendUrl: 'http://localhost:4000',
+  backendUrl: 'http://192.168.1.3:4500',
   googleMapsAPIKey: 'AIzaSyBQvIddOL1XiaVuaUIuwfeCquiaGUD5dsg',
   firebaseAPIKey: 'AIzaSyD3lUEf2B0nObOVUlxVJsI3bGQG8HPsPWc'
 };

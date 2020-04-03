@@ -1,6 +1,6 @@
 {
-  "appId": "com.udemycourse.ionicangular",
-  "appName": "ionic-angular-course",
+  "appId": "com.wehealth",
+  "appName": "wehealth",
   "bundledWebRuntime": false,
   "webDir": "www"
 }

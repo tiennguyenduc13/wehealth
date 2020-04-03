@@ -12,12 +12,11 @@ import { environment } from '../../../environments/environment';
 import { Plugins, Capacitor, GeolocationPosition } from '@capacitor/core';
 import { AuthService } from 'src/app/auth/auth.service';
 import { PlacesService } from '../places.service';
-import { IPositionMap, PositionMap } from '../position-map.model';
-import { IHealthChange } from '../place.model';
+import { IPositionMap } from '../position-map.model';
 
 @Component({
   selector: 'app-discover',
-  templateUrl: './discover.page1.html',
+  templateUrl: './discover.page.html',
   styleUrls: ['./discover.page.scss']
 })
 export class DiscoverPage implements OnInit, AfterViewInit, OnDestroy {
@@ -84,19 +83,28 @@ export class DiscoverPage implements OnInit, AfterViewInit, OnDestroy {
 
     return 'assets/icon/health/' + iconImage + '.png';
   }
+  createIcon(url, size) {
+    return {
+      url: url,
+      scaledSize: new this.googleMaps.Size(size, size)
+    };
+  }
   addMarkers() {
     // get positionMaps
     this.isLoading = true;
     this.loadPositionMaps().subscribe((positionMaps: IPositionMap[]) => {
       // set marker for me
-      let marker = this.createMarker('Me', { url: 'assets/icon/itsme.png' });
+      let marker = this.createMarker(
+        'Me',
+        this.createIcon('assets/icon/itsme.png', 25)
+      );
       marker.setMap(this.mainMap);
       positionMaps.forEach((positionMap: IPositionMap) => {
         // set marker for others
-        marker = this.createMarker(positionMap.userId, {
-          url: this.findIconImage(positionMap.healthSignals),
-          scaledSize: new this.googleMaps.Size(25, 25)
-        });
+        marker = this.createMarker(
+          positionMap.userId,
+          this.createIcon(this.findIconImage(positionMap.healthSignals), 25)
+        );
         console.log('marker', marker);
         marker.setMap(this.mainMap);
       });
@@ -113,10 +121,11 @@ export class DiscoverPage implements OnInit, AfterViewInit, OnDestroy {
           center: this.center,
           zoom: 16
         });
-
+        console.log('this.mainMap1', this.mainMap);
         this.addMarkers();
 
         this.googleMaps.event.addListenerOnce(this.mainMap, 'idle', () => {
+          console.log('this.mainMap2 idle');
           this.renderer.addClass(mapEl, 'visible');
         });
       })
@@ -153,8 +162,10 @@ export class DiscoverPage implements OnInit, AfterViewInit, OnDestroy {
       script.onload = () => {
         const loadedGoogleModule = win.google;
         if (loadedGoogleModule && loadedGoogleModule.maps) {
+          console.log('resolve map');
           resolve(loadedGoogleModule.maps);
         } else {
+          console.log('reject map');
           reject('Google maps SDK not available.');
         }
       };

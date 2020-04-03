@@ -12,5 +12,7 @@ export class OfferItemComponent implements OnInit {
 
   constructor() {}
 
-  ngOnInit() {}
+  ngOnInit() {
+    console.log('ngOnInit healthChange', this.healthChange);
+  }
 }

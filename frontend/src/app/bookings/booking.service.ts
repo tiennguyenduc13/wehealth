@@ -53,16 +53,18 @@ export class BookingService {
     );
     return this.http
       .post<{ name: string }>(
-        'https://wehealth-6d7d4.firebaseio.com/bookings.json',
+        'https://ionic-angular-course-77f81.firebaseio.com/bookings.json',
         { ...newBooking, id: null }
       )
       .pipe(
         switchMap(resData => {
           generatedId = resData.name;
+          console.log('111 generatedId');
           return this.bookings;
         }),
         take(1),
         tap(bookings => {
+          console.log('222');
           newBooking.id = generatedId;
           this._bookings.next(bookings.concat(newBooking));
         })
@@ -72,7 +74,7 @@ export class BookingService {
   cancelBooking(bookingId: string) {
     return this.http
       .delete(
-        `https://wehealth-6d7d4.firebaseio.com/bookings/${bookingId}.json`
+        `https://ionic-angular-course-77f81.firebaseio.com/bookings/${bookingId}.json`
       )
       .pipe(
         switchMap(() => {
@@ -88,9 +90,7 @@ export class BookingService {
   fetchBookings() {
     return this.http
       .get<{ [key: string]: BookingData }>(
-        `https://wehealth-6d7d4.firebaseio.com/bookings.json?orderBy="userId"&equalTo="${
-          this.authService.userId
-        }"`
+        `https://ionic-angular-course-77f81.firebaseio.com/bookings.json?orderBy="userId"&equalTo="${this.authService.userId}"`
       )
       .pipe(
         map(bookingData => {

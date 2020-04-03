@@ -7,6 +7,7 @@ let HealthChange = require("../models/HealthChange");
 // Defined store route
 healthChangeRoutes.route("/add").post(function(req, res) {
   let healthChange = new HealthChange(req.body);
+  console.log("Adding healthChange");
   healthChange
     .save()
     .then(healthChange => {
@@ -19,6 +20,7 @@ healthChangeRoutes.route("/add").post(function(req, res) {
 
 healthChangeRoutes.route("/listByUserId/:userId").get(function(req, res) {
   const userId = req.params.userId;
+  console.log("Get lis healthChange", userId);
   HealthChange.find({ userId: userId }, (err, healthChanges) => {
     if (err) {
       console.log(err);
